@@ -1,0 +1,16 @@
+# Service specific Configuration
+# Combined cluster-scoped and namespace-scoped configuration
+
+componentID: zen
+
+# Cluster-scoped chart configuration
+clusterScoped:
+  appName: zen-cluster
+  chart: zen-cluster-scoped
+  version: 6.10.8+20260929.112719.45
+
+# Namespace-scoped chart configuration
+namespaceScoped:
+  appName: zen
+  chart: zen
+  version: 6.10.8+20260929.112719.45
