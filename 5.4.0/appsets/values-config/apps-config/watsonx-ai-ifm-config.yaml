@@ -1,0 +1,16 @@
+# Service specific Configuration
+# Combined cluster-scoped and namespace-scoped configuration
+
+componentID: watsonx-ai-ifm
+
+# Cluster-scoped chart configuration
+clusterScoped:
+  appName: watsonx-ai-ifm-cluster
+  chart: watsonx-ai-ifm-cluster-scoped
+  version: 13.0.8+20261009.135858.71
+
+# Namespace-scoped chart configuration
+namespaceScoped:
+  appName: watsonx-ai-ifm
+  chart: watsonx-ai-ifm
+  version: 13.0.8+20261009.135858.71

@@ -1,0 +1,19 @@
+# Service specific Configuration
+# Combined cluster-scoped and namespace-scoped configuration
+
+componentID: watsonx-ai
+
+# Cluster-scoped chart configuration
+clusterScoped:
+  appName: watsonx-ai-cluster
+  chart: watsonx-ai-cluster-scoped
+  version: 13.0.8+20260925.143128.32
+
+# Namespace-scoped chart configuration
+namespaceScoped:
+  appName: watsonx-ai
+  chart: watsonx-ai
+  version: 13.0.8+20260925.143128.32
+  values: |
+    watsonxAi:
+      scaleConfig: small

@@ -1,0 +1,16 @@
+# Service specific Configuration
+# Combined cluster-scoped and namespace-scoped configuration
+
+componentID: wml
+
+# Cluster-scoped chart configuration
+clusterScoped:
+  appName: wml-cluster
+  chart: wml-cluster-scoped
+  version: 13.0.4+20260928.154042.93
+
+# Namespace-scoped chart configuration
+namespaceScoped:
+  appName: wml
+  chart: wml
+  version: 13.0.4+20260928.154042.93

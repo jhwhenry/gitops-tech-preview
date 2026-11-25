@@ -9,10 +9,10 @@ The levels below reflect dependency depth — components at lower levels are fou
 ### Level 1
 
 - cpd_platform
-- cpfs
-- ibm_pg_operator
-- postgresql
 - ibm_usage_metering
+- ibm_pg_operator
+- cpfs
+- postgresql
 - zen
 
 ### Level 2
@@ -22,6 +22,8 @@ The levels below reflect dependency depth — components at lower levels are fou
 ### Level 3
 
 - opencontent_opensearch
+- analyticsengine
+- ibm_redis_cp
 
 ### Level 4
 
@@ -31,16 +33,23 @@ The levels below reflect dependency depth — components at lower levels are fou
 
 - datastage_ent_plus
 - ws_pipelines
+- datarefinery
+- watsonx_ai_ifm
+- ws_runtimes
+- wml
+- watsonx_data
+
+### Level 6
+
+- ws
+
+### Level 7
+
+- watsonx_ai
 
 ## Component Dependencies
 
 This section shows the dependencies for each component. Only components with dependencies are listed.
-
-### ccs
-
-**Dependencies:**
-- opencontent_opensearch
-- postgresql
 
 ### datastage_ent_plus
 
@@ -55,6 +64,77 @@ This section shows the dependencies for each component. Only components with dep
 - opencontent_opensearch
 - postgresql
 - ccs
+
+### datarefinery
+
+**Dependencies:**
+- opencontent_opensearch
+- postgresql
+- ccs
+
+### watsonx_ai_ifm
+
+**Dependencies:**
+- opencontent_opensearch
+- postgresql
+- ccs
+- ibm_redis_cp
+
+### ws_runtimes
+
+**Dependencies:**
+- opencontent_opensearch
+- postgresql
+- ccs
+
+### wml
+
+**Dependencies:**
+- opencontent_opensearch
+- postgresql
+- ccs
+- ibm_redis_cp
+
+### watsonx_ai
+
+**Dependencies:**
+- opencontent_opensearch
+- postgresql
+- ccs
+- watsonx_ai_ifm
+- ws_runtimes
+- datarefinery
+- ws
+- wml
+- ibm_redis_cp
+
+### ws
+
+**Dependencies:**
+- opencontent_opensearch
+- postgresql
+- ccs
+- ws_runtimes
+- datarefinery
+
+### watsonx_data
+
+**Dependencies:**
+- analyticsengine
+- ccs
+- opencontent_opensearch
+- postgresql
+
+### analyticsengine
+
+**Dependencies:**
+- postgresql
+
+### ccs
+
+**Dependencies:**
+- opencontent_opensearch
+- postgresql
 
 
 
@@ -77,29 +157,47 @@ This section shows the dependencies for each component. Only components with dep
 
 Please make sure that these charts are available from your configured helm chart repo (`https://raw.github.com/jhwhenry/gitops-charts/main/softwarehub`):
 
-- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/platform-config-5.10.8+20260929.105344.9.tgz`
-- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ccs-cluster-scoped-13.0.8+20261013.142720.198.tgz`
-- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ccs-13.0.8+20261013.142720.198.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/datastage-ent-plus-cluster-scoped-12.0.8+20260927.202412.29.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/datastage-ent-plus-12.0.8+20260927.202412.29.tgz`
 - `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/cpd-platform-cluster-scoped-5.10.8+20260929.105344.9.tgz`
 - `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/cpd-platform-5.10.8+20260929.105344.9.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ws-pipelines-cluster-scoped-13.0.8+20260929.143744.25.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ws-pipelines-13.0.8+20260929.143744.25.tgz`
 - `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/opencontent-opensearch-cluster-scoped-1.5.3+20250905.120936.tgz`
 - `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/opencontent-opensearch-1.5.3+20250905.120936.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ibm-usage-metering-cluster-scoped-1.0.8+20260916.194642.0.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ibm-usage-metering-1.0.8+20260916.194642.0.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/datarefinery-cluster-scoped-13.0.8+20260928.214227.474.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/datarefinery-13.0.8+20260928.214227.474.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/platform-config-5.10.8+20260929.105344.9.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/watsonx-ai-ifm-cluster-scoped-13.0.8+20261009.135858.71.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/watsonx-ai-ifm-13.0.8+20261009.135858.71.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ws-runtimes-cluster-scoped-13.0.3+20260925.084230.71.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ws-runtimes-13.0.3+20260925.084230.71.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/wml-cluster-scoped-13.0.4+20260928.154042.93.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/wml-13.0.4+20260928.154042.93.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/watsonx-ai-cluster-scoped-13.0.8+20260925.143128.32.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/watsonx-ai-13.0.8+20260925.143128.32.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ws-cluster-scoped-13.0.8+20260925.125219.26.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ws-13.0.8+20260925.125219.26.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/watsonx-data-cluster-scoped-7.0.5+20260729.182904.296.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/watsonx-data-7.0.5+20260729.182904.296.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ibm-pg-operator-cluster-scoped-28.3.3+20260625.144014.538.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ibm-pg-operator-28.3.3+20260625.144015.538.tgz`
 - `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ibm-common-service-operator-cluster-scoped-4.19.3+20260915.101245.0.tgz`
 - `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ibm-common-service-operator-4.19.3+20260915.101245.0.tgz`
 - `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ibm-iam-operator-cluster-scoped-4.18.2+20260909.101104.0.tgz`
 - `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ibm-iam-operator-4.18.2+20260909.101104.0.tgz`
-- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ibm-pg-operator-cluster-scoped-28.3.3+20260625.144014.538.tgz`
-- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ibm-pg-operator-28.3.3+20260625.144015.538.tgz`
 - `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/postgresql-cluster-scoped-5.40.2+20261016.171231.346.tgz`
 - `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/postgresql-5.40.2+20261016.171231.346.tgz`
-- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ibm-usage-metering-cluster-scoped-1.0.8+20260916.194642.0.tgz`
-- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ibm-usage-metering-1.0.8+20260916.194642.0.tgz`
-- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/datastage-ent-plus-cluster-scoped-12.0.8+20260927.202412.29.tgz`
-- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/datastage-ent-plus-12.0.8+20260927.202412.29.tgz`
-- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ws-pipelines-cluster-scoped-13.0.8+20260929.143744.25.tgz`
-- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ws-pipelines-13.0.8+20260929.143744.25.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/analyticsengine-cluster-scoped-5.4.8+20260927.003702.2995.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/analyticsengine-5.4.8+20260927.003702.2995.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ibm-redis-cp-cluster-scoped-1.4.1+20260902.142404.332.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ibm-redis-cp-1.4.1+20260902.142404.332.tgz`
 - `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/zen-cluster-scoped-6.10.8+20260929.112719.45.tgz`
 - `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/zen-6.10.8+20260929.112719.45.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ccs-cluster-scoped-13.0.8+20261013.142720.198.tgz`
+- `/opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/ArgoCD/5.4.0/charts/ccs-13.0.8+20261013.142720.198.tgz`
 
 For more information about hosting charts in a helm repo, see https://helm.sh/docs/topics/chart_repository/
 

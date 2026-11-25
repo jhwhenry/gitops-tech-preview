@@ -1,0 +1,16 @@
+# Service specific Configuration
+# Combined cluster-scoped and namespace-scoped configuration
+
+componentID: ws-runtimes
+
+# Cluster-scoped chart configuration
+clusterScoped:
+  appName: ws-runtimes-cluster
+  chart: ws-runtimes-cluster-scoped
+  version: 13.0.3+20260925.084230.71
+
+# Namespace-scoped chart configuration
+namespaceScoped:
+  appName: ws-runtimes
+  chart: ws-runtimes
+  version: 13.0.3+20260925.084230.71

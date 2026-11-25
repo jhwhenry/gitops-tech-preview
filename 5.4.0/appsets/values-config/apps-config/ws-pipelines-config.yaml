@@ -14,6 +14,3 @@ namespaceScoped:
   appName: ws-pipelines
   chart: ws-pipelines
   version: 13.0.8+20260929.143744.25
-  values: |
-    wsPipelines:
-      size: small

@@ -1,0 +1,19 @@
+# Service specific Configuration
+# Combined cluster-scoped and namespace-scoped configuration
+
+componentID: analyticsengine
+
+# Cluster-scoped chart configuration
+clusterScoped:
+  appName: analyticsengine-cluster
+  chart: analyticsengine-cluster-scoped
+  version: 5.4.8+20260927.003702.2995
+
+# Namespace-scoped chart configuration
+namespaceScoped:
+  appName: analyticsengine
+  chart: analyticsengine
+  version: 5.4.8+20260927.003702.2995
+  values: |
+    analyticsengine:
+      deployCR: false

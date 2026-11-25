@@ -1,0 +1,16 @@
+# Service specific Configuration
+# Combined cluster-scoped and namespace-scoped configuration
+
+componentID: ibm-redis-cp
+
+# Cluster-scoped chart configuration
+clusterScoped:
+  appName: ibm-redis-cp-cluster
+  chart: ibm-redis-cp-cluster-scoped
+  version: 1.4.1+20260902.142404.332
+
+# Namespace-scoped chart configuration
+namespaceScoped:
+  appName: ibm-redis-cp
+  chart: ibm-redis-cp
+  version: 1.4.1+20260902.142404.332

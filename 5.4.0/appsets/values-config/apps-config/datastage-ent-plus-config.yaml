@@ -14,6 +14,3 @@ namespaceScoped:
   appName: datastage-ent-plus
   chart: datastage-ent-plus
   version: 12.0.8+20260927.202412.29
-  values: |
-    datastageEntPlus:
-      size: large

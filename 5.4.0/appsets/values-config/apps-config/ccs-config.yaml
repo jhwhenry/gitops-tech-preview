@@ -14,6 +14,3 @@ namespaceScoped:
   appName: ccs
   chart: ccs
   version: 13.0.8+20261013.142720.198
-  values: |
-    ccs:
-      size: large
