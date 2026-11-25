@@ -1,0 +1,264 @@
+# -------------------------------------------------------------------
+# ArgoCD AppProject for IBM Software Hub
+#
+# This AppProject is environment-agnostic and shared across all
+# environments (dev, prod, etc.). Environment-specific behaviour
+# is controlled by the ApplicationSet in each environment folder.
+#
+# clusterResource strategy: ALLOWLIST-ALL + BLACKLIST
+#
+# Because IBM Software Hub is an open-ended operator platform and new
+# services can introduce arbitrary cluster-scoped resource kinds, the
+# whitelist is opened with a wildcard and a targeted blacklist removes
+# the small set of kinds that must never be managed by application
+# delivery tooling.
+#
+# ArgoCD evaluation logic (from app_project_types.go):
+#   permitted = isWhiteListed && !isBlackListed
+# Both fields must be set: blacklist alone has no effect because an
+# empty whitelist makes isWhiteListed always false.
+#
+# Deployment order: apply this file BEFORE the ApplicationSets.
+#   oc apply -f appproject/argocd-project.yaml
+#
+# Before applying, replace the two sourceRepos placeholders and check the
+# namespaces in destinations (see docs/Install.md, section 3.14).
+# -------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: ibm-software-hub
+  namespace: openshift-gitops
+  # Prevent accidental deletion of the project while apps still reference it
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: >
+    IBM Software Hub GitOps project.
+    Governs the Argo CD Applications that deploy the CPD platform, CPFS
+    operators, IBM Licensing, and their namespace-scoped and cluster-scoped
+    components. Limits deployments to the registered Git and Helm repositories
+    and to the in-cluster namespaces listed in destinations, blocks
+    platform-level resource kinds, and defines the swh-readonly and swh-admin
+    roles.
+
+  # -----------------------------------------------------------------
+  # sourceRepos — trusted sources for chart and manifest content.
+  #
+  # This field governs Application.spec.source.repoURL only — i.e. the
+  # repo or registry that supplies the Helm charts or raw YAML manifests
+  # being deployed. It does NOT govern where Application or ApplicationSet
+  # CRs themselves are stored; that is a separate concern controlled by
+  # sourceNamespaces below.
+  #
+  # Guidance: register one entry for every source type in use.
+  # Common patterns for IBM Software Hub deployments:
+  #
+  #   Git repo (current — Helm charts bundled inside the GitOps repo):
+  #     - "https://github.ibm.com/data-ai-swat/gitops-appset.git"
+  #
+  #   Traditional Helm chart repository (HTTP/HTTPS index.yaml):
+  #     - "https://charts.example.com/ibm-software-hub"
+  #
+  #   OCI-based Helm registry (e.g. IBM Cloud Container Registry):
+  #     - "oci://cp.icr.io/cp/cpd"
+  #
+  #   Private enterprise Helm repository (Artifactory / Nexus):
+  #     - "https://artifactory.example.com/artifactory/helm-local"
+  #
+  # Important: each repoURL declared in Application.spec.source must
+  # exactly match an entry here. ArgoCD normalises Git URLs before
+  # matching (e.g. trailing .git differences are handled), but OCI and
+  # HTTP Helm repo URLs are matched literally. If no match is found,
+  # ArgoCD will reject the sync regardless of all other settings.
+  # -----------------------------------------------------------------
+  sourceRepos:
+    - "<the URL of your Git repo hosting the Argo CD applicationset and configuration files>"
+    - "<the URL of your Helm repo hosting the Helm charts>"
+  # -----------------------------------------------------------------
+  # sourceNamespaces — governs where Application/ApplicationSet CRs
+  # that reference this project are permitted to live.
+  #
+  # This is the complement to sourceRepos:
+  #   sourceRepos      → controls where chart/manifest CONTENT is pulled from
+  #                      (Application.spec.source.repoURL)
+  #   sourceNamespaces → controls which Kubernetes namespaces may HOST
+  #                      Application or ApplicationSet CR objects that
+  #                      reference this project
+  #
+  # Together they form a two-dimensional trust boundary:
+  #   - A sync is rejected if the chart source is not in sourceRepos.
+  #   - An Application CR is rejected if it lives outside sourceNamespaces.
+  #
+  # Locked to openshift-gitops — the ArgoCD control-plane namespace.
+  # Only ApplicationSet and bootstrap Application CRs deployed by the
+  # GitOps operator into this namespace can reference ibm-software-hub.
+  # Any Application CR created in any other namespace (e.g. by a tenant
+  # or misconfigured automation) will be denied by this project.
+  # -----------------------------------------------------------------
+  sourceNamespaces:
+    - openshift-gitops
+
+  # -----------------------------------------------------------------
+  # Destinations: explicit list matching actual deployed namespaces.
+  # All target the in-cluster API server only.
+  # 'cpd' is the instanceNamespace; 'cpd-operators' is the operator
+  # namespace as declared in the ApplicationSet valuesObject.
+  # Update this list when deploying additional IBM Software Hub services
+  # that require their own namespace.
+  # -----------------------------------------------------------------
+  destinations:
+    - name: in-cluster
+      namespace: cpd-operators
+      server: "https://kubernetes.default.svc"
+    - name: in-cluster
+      namespace: cpd-instance
+      server: "https://kubernetes.default.svc"
+    - name: in-cluster
+      namespace: ibm-licensing
+      server: "https://kubernetes.default.svc"
+    - name: in-cluster
+      namespace: openshift-gitops          # ApplicationSet/bootstrap App CRs
+      server: "https://kubernetes.default.svc"
+
+  # -----------------------------------------------------------------
+  # Cluster-scoped resources — allowlist-all + blacklist pattern
+  #
+  # Why this pattern:
+  #   IBM Software Hub is an open-ended platform. Each new service
+  #   (DataStage, Analytics Engine, OpenSearch, Cognos, etc.) installs
+  #   its own cluster-scoped CRDs and operator CRs under a unique API
+  #   group. Maintaining an explicit whitelist per kind/group requires
+  #   updating this file for every new service onboarded, creating
+  #   operational friction and deployment failures.
+  #
+  # How it works:
+  #   clusterResourceWhitelist: [group: "*", kind: "*"]  — open gate
+  #   clusterResourceBlacklist: [explicit dangerous kinds] — closed gate
+  #   ArgoCD permits a resource only when: whitelisted AND NOT blacklisted
+  #
+  # Blacklist rationale — kinds excluded because they affect the
+  # cluster as a whole and must not be managed by application delivery:
+  #   Node, PersistentVolume          — infrastructure primitives
+  #   StorageClass                    — affects all PVC provisioning
+  #   Namespace, Project              — cluster/project topology
+  #   MachineConfig                   — modifies node OS directly (OCP)
+  #   ClusterVersion                  — controls OCP platform upgrade
+  #   APIService                      — extends the API server itself
+  #   PriorityClass                   — affects cluster-wide scheduling
+  #   ClusterIssuer                   — cluster-wide cert authority
+  #   SecurityContextConstraints      — pod privilege control (OCP)
+  # -----------------------------------------------------------------
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+
+  clusterResourceBlacklist:
+    # --- Infrastructure primitives (must not be GitOps-managed) ------
+    - group: ""
+      kind: "Node"
+    - group: ""
+      kind: "PersistentVolume"
+    - group: "storage.k8s.io"
+      kind: "StorageClass"
+    # --- Cluster and project topology (platform-level concerns) ------
+    - group: ""
+      kind: "Namespace"
+    - group: "project.openshift.io"
+      kind: "Project"
+    # --- OpenShift platform controls (must never be app-managed) -----
+    - group: "machineconfiguration.openshift.io"
+      kind: "MachineConfig"
+    - group: "config.openshift.io"
+      kind: "ClusterVersion"
+    # --- API server extension ----------------------------------------
+    - group: "apiregistration.k8s.io"
+      kind: "APIService"
+    # --- Cluster-wide scheduling priority ----------------------------
+    - group: "scheduling.k8s.io"
+      kind: "PriorityClass"
+    # --- OpenShift pod privilege control (cluster-scoped) ------------
+    - group: "security.openshift.io"
+      kind: "SecurityContextConstraints"
+
+  # -----------------------------------------------------------------
+  # Namespace-scoped resources: broad by default for operators, but
+  # explicitly excludes high-risk policy kinds that should be managed
+  # through dedicated policy tooling, not application delivery.
+  # -----------------------------------------------------------------
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceBlacklist:
+    - group: "networking.k8s.io"
+      kind: "NetworkPolicy"
+    - group: ""
+      kind: "ResourceQuota"
+    - group: ""
+      kind: "LimitRange"
+    # --- Node-level daemon workloads ---------------------------------
+    - group: "apps"
+      kind: "DaemonSet"
+    # --- OpenShift network egress control (namespace-scoped) ---------
+    - group: "k8s.ovn.org"
+      kind: "EgressFirewall"
+
+  # -----------------------------------------------------------------
+  # Orphaned resource monitoring: warns on resources present in
+  # destination namespaces that are not tracked by any Argo app.
+  # -----------------------------------------------------------------
+  orphanedResources:
+    warn: true
+
+  # -----------------------------------------------------------------
+  # Project-level RBAC roles
+  #
+  # Two roles only — aligned to the actual human interactions:
+  #
+  #   IBM Software Hub Applications can be synchronized manually or
+  #   automatically; both modes are supported. The human interactions are:
+  #     - Monitoring / auditing deployment state  → swh-readonly
+  #     - Triggering syncs (manual mode), platform administration
+  #       and intervention in failed syncs         → swh-admin
+  #
+  # A "deployer" role is intentionally absent: anyone who triggers a
+  # sync or intervenes in a failed sync needs full diagnostic access
+  # (logs, resource tree, force-sync) — that is swh-admin, not a
+  # restricted sync-only role.
+  #
+  # Global role assignments and policy.default are managed in the
+  # companion argocd-rbac-cm.yaml in this directory.
+  # See docs/ArgoCD-RBAC-OCP-Groups.md for the full setup guide.
+  # -----------------------------------------------------------------
+  roles:
+    # ── READ-ONLY ────────────────────────────────────────────────────
+    # For: security/compliance auditors, management, L1 support
+    # Can: view application status, health, resource tree, manifests,
+    #      sync history, and pod logs via the ArgoCD UI
+    # Cannot: trigger sync, modify applications or any ArgoCD resource
+    - name: swh-readonly
+      description: >
+        Read-only visibility into IBM Software Hub deployment state.
+        For auditors, compliance teams, and management.
+      policies:
+        - p, proj:ibm-software-hub:swh-readonly, applications, get, ibm-software-hub/*, allow
+        - p, proj:ibm-software-hub:swh-readonly, logs,          get, ibm-software-hub/*, allow
+      groups: []   # populate with your SSO group, e.g. ["ibm-swh-viewers"]
+
+    # ── ADMIN ────────────────────────────────────────────────────────
+    # For: IBM SWH platform team
+    # Can: full application lifecycle management, ApplicationSet
+    #      management, force-sync, view repo registrations, view logs
+    # Cannot: modify global ArgoCD config or resources in other
+    #         projects — use role:admin via argocd-rbac-cm.yaml for
+    #         platform-wide infrastructure access
+    - name: swh-admin
+      description: >
+        Full application management for IBM Software Hub platform team.
+        Includes ApplicationSet control and force-sync capability.
+      policies:
+        - p, proj:ibm-software-hub:swh-admin, applications,    *,   ibm-software-hub/*, allow
+        - p, proj:ibm-software-hub:swh-admin, applicationsets, *,   ibm-software-hub/*, allow
+        - p, proj:ibm-software-hub:swh-admin, logs,            get, ibm-software-hub/*, allow
+        - p, proj:ibm-software-hub:swh-admin, repositories,    get, *,                 allow
+      groups: []   # populate with your SSO group, e.g. ["ibm-swh-admins"]

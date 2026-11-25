@@ -1,0 +1,16 @@
+# Service specific Configuration
+# Combined cluster-scoped and namespace-scoped configuration
+
+componentID: opencontent-opensearch
+
+# Cluster-scoped chart configuration
+clusterScoped:
+  appName: opencontent-opensearch-cluster
+  chart: opencontent-opensearch-cluster-scoped
+  version: 1.5.3+20250905.120936
+
+# Namespace-scoped chart configuration
+namespaceScoped:
+  appName: opencontent-opensearch
+  chart: opencontent-opensearch
+  version: 1.5.3+20250905.120936

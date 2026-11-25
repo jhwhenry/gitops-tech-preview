@@ -1,0 +1,16 @@
+# Service specific Configuration
+# Combined cluster-scoped and namespace-scoped configuration
+
+componentID: cpfs
+
+# Cluster-scoped chart configuration
+clusterScoped:
+  appName: ibm-iam-operator-cluster
+  chart: ibm-iam-operator-cluster-scoped
+  version: 4.18.2+20260909.101104.0
+
+# Namespace-scoped chart configuration
+namespaceScoped:
+  appName: ibm-iam-operator
+  chart: ibm-iam-operator
+  version: 4.18.2+20260909.101104.0

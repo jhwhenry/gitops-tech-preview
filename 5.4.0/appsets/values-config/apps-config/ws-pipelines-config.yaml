@@ -1,0 +1,19 @@
+# Service specific Configuration
+# Combined cluster-scoped and namespace-scoped configuration
+
+componentID: ws-pipelines
+
+# Cluster-scoped chart configuration
+clusterScoped:
+  appName: ws-pipelines-cluster
+  chart: ws-pipelines-cluster-scoped
+  version: 13.0.8+20260929.143744.25
+
+# Namespace-scoped chart configuration
+namespaceScoped:
+  appName: ws-pipelines
+  chart: ws-pipelines
+  version: 13.0.8+20260929.143744.25
+  values: |
+    wsPipelines:
+      size: small
