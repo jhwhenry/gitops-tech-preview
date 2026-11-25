@@ -1,0 +1,16 @@
+# Service specific Configuration
+# Combined cluster-scoped and namespace-scoped configuration
+
+componentID: datarefinery
+
+# Cluster-scoped chart configuration
+clusterScoped:
+  appName: datarefinery-cluster
+  chart: datarefinery-cluster-scoped
+  version: 13.0.8+20260928.214227.474
+
+# Namespace-scoped chart configuration
+namespaceScoped:
+  appName: datarefinery
+  chart: datarefinery
+  version: 13.0.8+20260928.214227.474

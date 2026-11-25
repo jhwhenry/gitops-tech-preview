@@ -1,0 +1,16 @@
+# Service specific Configuration
+# Combined cluster-scoped and namespace-scoped configuration
+
+componentID: ws
+
+# Cluster-scoped chart configuration
+clusterScoped:
+  appName: ws-cluster
+  chart: ws-cluster-scoped
+  version: 13.0.8+20260925.125219.26
+
+# Namespace-scoped chart configuration
+namespaceScoped:
+  appName: ws
+  chart: ws
+  version: 13.0.8+20260925.125219.26

@@ -1,0 +1,20 @@
+# Service specific Configuration
+# Combined cluster-scoped and namespace-scoped configuration
+
+componentID: watsonx-data
+
+# Cluster-scoped chart configuration
+clusterScoped:
+  appName: watsonx-data-cluster
+  chart: watsonx-data-cluster-scoped
+  version: 7.0.5+20260729.182904.296
+
+# Namespace-scoped chart configuration
+namespaceScoped:
+  appName: watsonx-data
+  chart: watsonx-data
+  version: 7.0.5+20260729.182904.296
+  values: |
+    watsonxData:
+      enable_lite_milvus: false
+      scaleConfig: small

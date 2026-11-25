@@ -1,16 +1,16 @@
 # Service specific Configuration
 # Combined cluster-scoped and namespace-scoped configuration
 
-componentID: zen
+componentID: wml
 
 # Cluster-scoped chart configuration
 clusterScoped:
-  appName: zen-cluster
-  chart: zen-cluster-scoped
-  version: 6.10.8+20260929.112719.45
+  appName: wml-cluster
+  chart: wml-cluster-scoped
+  version: 13.0.4+20260928.154042.93
 
 # Namespace-scoped chart configuration
 namespaceScoped:
-  appName: zen
-  chart: zen
-  version: 6.10.8+20260929.112719.45
+  appName: wml
+  chart: wml
+  version: 13.0.4+20260928.154042.93
