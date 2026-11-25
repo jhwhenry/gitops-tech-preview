@@ -22,7 +22,7 @@
 #   oc apply -f appproject/argocd-project.yaml
 #
 # Before applying, replace the two sourceRepos placeholders and check the
-# namespaces in destinations (see docs/Install.md, section 3.14).
+# namespaces in destinations (see docs/Install.md, section 3.13).
 # -------------------------------------------------------------------
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
@@ -55,7 +55,7 @@ spec:
   # Common patterns for IBM Software Hub deployments:
   #
   #   Git repo (current — Helm charts bundled inside the GitOps repo):
-  #     - "https://github.ibm.com/data-ai-swat/gitops-appset.git"
+  #     - "https://github.com/jhwhenry/gitops-tech-preview.git"
   #
   #   Traditional Helm chart repository (HTTP/HTTPS index.yaml):
   #     - "https://charts.example.com/ibm-software-hub"
@@ -102,8 +102,8 @@ spec:
   # -----------------------------------------------------------------
   # Destinations: explicit list matching actual deployed namespaces.
   # All target the in-cluster API server only.
-  # 'cpd' is the instanceNamespace; 'cpd-operators' is the operator
-  # namespace as declared in the ApplicationSet valuesObject.
+  # 'cpd-instance' is the instanceNamespace; 'cpd-operators' is the
+  # operator namespace as declared in the ApplicationSet valuesObject.
   # Update this list when deploying additional IBM Software Hub services
   # that require their own namespace.
   # -----------------------------------------------------------------
@@ -119,6 +119,15 @@ spec:
       server: "https://kubernetes.default.svc"
     - name: in-cluster
       namespace: openshift-gitops          # ApplicationSet/bootstrap App CRs
+      server: "https://kubernetes.default.svc"
+    # The generated Applications use destination namespace 'default'
+    # (namespace-scoped charts) or no namespace (cluster-scoped charts,
+    # evaluated as ''). Argo CD rejects the Applications without these.
+    - name: in-cluster
+      namespace: default
+      server: "https://kubernetes.default.svc"
+    - name: in-cluster
+      namespace: ""
       server: "https://kubernetes.default.svc"
 
   # -----------------------------------------------------------------
@@ -146,9 +155,32 @@ spec:
   #   ClusterVersion                  — controls OCP platform upgrade
   #   APIService                      — extends the API server itself
   #   PriorityClass                   — affects cluster-wide scheduling
-  #   ClusterIssuer                   — cluster-wide cert authority
   #   SecurityContextConstraints      — pod privilege control (OCP)
   # -----------------------------------------------------------------
+
+  # -----------------------------------------------------------------
+  # SECURITY NOTE — limits of the wildcard whitelist
+  #
+  # The project checks the KIND of each cluster-scoped object, not its
+  # content. A chart can still create a ClusterRole/ClusterRoleBinding
+  # that grants cluster-admin, or a webhook configuration that
+  # intercepts API requests; the project cannot tell these from the
+  # legitimate ones the platform charts need. Trust therefore rests on
+  # the sources. To reduce the risk:
+  #   1. Protect the Git and Helm repos (branch protection, required
+  #      reviews, few approvers). Write access to either is effectively
+  #      cluster-admin. Keep sourceRepos limited to those two repos.
+  #   2. Pin chart versions and review index.yaml and .tgz changes.
+  #   3. Keep swh-admin membership small and reviewed.
+  #   4. Review the diff for new ClusterRole, ClusterRoleBinding and
+  #      webhook objects before syncing.
+  #   5. Once the services are stable, replace the wildcard with an
+  #      allowlist of the kinds in use: CustomResourceDefinition,
+  #      ClusterRole, ClusterRoleBinding, Mutating/Validating
+  #      WebhookConfiguration, IBMLicensing. New services may then need
+  #      their kinds added here.
+  # -----------------------------------------------------------------
+
   clusterResourceWhitelist:
     - group: "*"
       kind: "*"
