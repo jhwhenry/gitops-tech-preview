@@ -163,7 +163,7 @@ export WORK_DIR=$(podman inspect olm-utils-play-v4 | jq -r '.[0].Mounts' |jq -r 
 ls -alrt $WORK_DIR/offline/${VERSION}/.ibm-pak/data/cases
 ```
 
-### 4. Clone the `gitops-charts` Helm repo to your local workstation
+### 5. Clone the `gitops-charts` Helm repo to your local workstation
 
 The example reuses the `gitops-charts` repo used by IBM Software Hub deployment. The `gitops-charts` repo is supposed to exist in the 
 `ARGOCD_DIR`. Clone the `gitops-charts` repo if it doesn't exist.
@@ -173,7 +173,7 @@ cd $ARGOCD_DIR
 git clone https://github.com/jhwhenry/gitops-charts.git
 ```
 
-### 5. Clone the `gitops-tech-preview` git repo to your local workstation
+### 6. Clone the `gitops-tech-preview` git repo to your local workstation
 
 The example reuses the `gitops-tech-preview` repo used by IBM Software Hub deployment. The `gitops-tech-preview` repo is supposed to exist in the `ARGOCD_DIR`. Clone the `gitops-tech-preview` repo if it doesn't exist.
 
@@ -187,175 +187,7 @@ git branch --show-current
 
 The last command must print the value of `ARGOCD_APPSET_CONFIG_GIT_REPO_BRANCH` (`5.4.0_Patch8` in this example).
 
-### 5. Extract and push Helm charts to your Helm repo
-#### 5.1 Extract Helm charts from the CASE files
-Run the `extract_helm_charts.sh` script for extracting the Helm charts.
-
-1. Specify the `cases` folder created by the `case-download` command.
-```bash
-export CASES_DIR=$WORK_DIR/offline/${VERSION}/.ibm-pak/data/cases
-```
-2. Specify the target directory which will store the extracted Helm charts from the CASE packages.
-It's recommended using the absolute path of the `gitops-charts/softwarehub` directory created by the above git clone command.
-```bash
-export HELM_CHARTS_DIR=$ARGOCD_DIR/gitops-charts/softwarehub
-```
-
-3. Run the `extract_helm_charts.sh` script 
-```bash
-cd $ARGOCD_DIR/gitops-tech-preview
-chmod +x ./tools/extract_helm_charts.sh
-
-./tools/extract_helm_charts.sh -s $CASES_DIR -t $HELM_CHARTS_DIR -o 1 
-```
-
-The output looks like below.
-```text
-[root@bastion-1 gitops-tech-preview]# ./tools/extract_helm_charts.sh -s $CASES_DIR -t $HELM_CHARTS_DIR -o 1 
-[2026-11-20T16:54:35] [INFO ] ==========================================================
-[2026-11-20T16:54:35] [INFO ]  Helm Chart Extractor
-[2026-11-20T16:54:35] [INFO ] ==========================================================
-[2026-11-20T16:54:35] [INFO ] Source      : /opt/ibm/argocd/cpd-cli-workspace/olm-utils-workspace/work/offline/5.4.0/.ibm-pak/data/cases
-[2026-11-20T16:54:35] [INFO ] Target      : /opt/ibm/argocd/gitops-charts/softwarehub
-[2026-11-20T16:54:35] [INFO ] Mode        : 1 (packaged .tgz)
-[2026-11-20T16:54:35] [INFO ] Log file    : /opt/ibm/argocd/gitops-charts/softwarehub/extract_helm_charts_20261120_165435.log
-[2026-11-20T16:54:35] [INFO ] ==========================================================
-[2026-11-20T16:54:35] [INFO ] Total .tgz files found (including migration): 64
-[2026-11-20T16:54:35] [INFO ]   Regular charts : 45
-[2026-11-20T16:54:35] [INFO ]   Migration charts (excluded): 19
-[2026-11-20T16:54:35] [INFO ]     SKIP (migration): analyticsengine-migration-5.4.8.tgz  [ibm-analyticsengine/5.4.8/charts]
-[2026-11-20T16:54:35] [INFO ]     SKIP (migration): ccs-migration-0.0.3.tgz  [ibm-ccs/13.0.8/charts]
-[2026-11-20T16:54:35] [INFO ]     SKIP (migration): postgresql-migration-0.0.0.tgz  [ibm-cloud-native-postgresql/5.40.2/charts]
-[2026-11-20T16:54:35] [INFO ]     SKIP (migration): cpfs-migration-0.0.4193.tgz  [ibm-cp-common-services/4.19.3/charts]
-[2026-11-20T16:54:36] [INFO ]     SKIP (migration): cpd-platform-migration-0.0.2.tgz  [ibm-cp-datacore/5.10.8/charts]
-[2026-11-20T16:54:36] [INFO ]     SKIP (migration): datarefinery-migration-0.0.1.tgz  [ibm-datarefinery/13.0.8/charts]
-[2026-11-20T16:54:36] [INFO ]     SKIP (migration): datastage-ent-plus-migration-0.1.8+20260927.202412.29.tgz  [ibm-datastage/12.0.8/charts]
-[2026-11-20T16:54:36] [INFO ]     SKIP (migration): opencontent-opensearch-migration-0.0.2.tgz  [ibm-opensearch-operator/1.5.3/charts]
-[2026-11-20T16:54:36] [INFO ]     SKIP (migration): ibm-redis-cp-migration-0.0.1.tgz  [ibm-redis-cp/1.4.1/charts]
-[2026-11-20T16:54:36] [INFO ]     SKIP (migration): ibm-usage-metering-migration-0.0.108.tgz  [ibm-usage-metering/1.0.8/charts]
-[2026-11-20T16:54:36] [INFO ]     SKIP (migration): watsonx-ai-ifm-migration-0.0.8.tgz  [ibm-watsonx-ai-ifm/13.0.8/charts]
-[2026-11-20T16:54:36] [INFO ]     SKIP (migration): watsonx-ai-migration-0.0.8.tgz  [ibm-watsonx-ai/13.0.8/charts]
-[2026-11-20T16:54:36] [INFO ]     SKIP (migration): watsonx-data-migration-0.0.1.tgz  [ibm-watsonx-data/7.0.5/charts]
-[2026-11-20T16:54:36] [INFO ]     SKIP (migration): watsonx-data-premium-migration-0.0.1.tgz  [ibm-watsonx-data/7.0.5/charts]
-[2026-11-20T16:54:36] [INFO ]     SKIP (migration): wml-migration-0.0.4.tgz  [ibm-wml-cpd/13.0.4/charts]
-[2026-11-20T16:54:36] [INFO ]     SKIP (migration): ws-pipelines-migration-13.0.8+20260929.143744.25.tgz  [ibm-ws-pipelines/13.0.8/charts]
-[2026-11-20T16:54:36] [INFO ]     SKIP (migration): ws-runtimes-migration-0.0.0.tgz  [ibm-wsl-runtimes/13.0.3/charts]
-[2026-11-20T16:54:36] [INFO ]     SKIP (migration): ws-migration-0.0.2.tgz  [ibm-wsl/13.0.8/charts]
-[2026-11-20T16:54:36] [INFO ]     SKIP (migration): zen-migration-0.0.4.tgz  [ibm-zen/6.10.8/charts]
-[2026-11-20T16:54:36] [INFO ] ----------------------------------------------------------
-[2026-11-20T16:54:36] [INFO ] COPIED  : analyticsengine-5.4.8+20260927.003702.2995.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : analyticsengine-cluster-scoped-5.4.8+20260927.003702.2995.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: ccs-13.0.8+20261013.142720.198.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : ccs-13.0.8+20261013.142720.198.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: ccs-cluster-scoped-13.0.8+20261013.142720.198.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : ccs-cluster-scoped-13.0.8+20261013.142720.198.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: postgresql-5.40.2+20261016.171231.346.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : postgresql-5.40.2+20261016.171231.346.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: postgresql-cluster-scoped-5.40.2+20261016.171231.346.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : postgresql-cluster-scoped-5.40.2+20261016.171231.346.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: ibm-common-service-operator-4.19.3+20260915.101245.0.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : ibm-common-service-operator-4.19.3+20260915.101245.0.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: ibm-common-service-operator-cluster-scoped-4.19.3+20260915.101245.0.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : ibm-common-service-operator-cluster-scoped-4.19.3+20260915.101245.0.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: ibm-iam-operator-4.18.2+20260909.101104.0.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : ibm-iam-operator-4.18.2+20260909.101104.0.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: ibm-iam-operator-cluster-scoped-4.18.2+20260909.101104.0.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : ibm-iam-operator-cluster-scoped-4.18.2+20260909.101104.0.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: ibm-namespace-scope-operator-4.3.8+20260914.101102.0.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : ibm-namespace-scope-operator-4.3.8+20260914.101102.0.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: ibm-namespace-scope-operator-cluster-scoped-4.3.8+20260914.101102.0.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : ibm-namespace-scope-operator-cluster-scoped-4.3.8+20260914.101102.0.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: cpd-platform-5.10.8+20260929.105344.9.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : cpd-platform-5.10.8+20260929.105344.9.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: cpd-platform-cluster-scoped-5.10.8+20260929.105344.9.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : cpd-platform-cluster-scoped-5.10.8+20260929.105344.9.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: platform-config-5.10.8+20260929.105344.9.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : platform-config-5.10.8+20260929.105344.9.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : datarefinery-13.0.8+20260928.214227.474.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : datarefinery-cluster-scoped-13.0.8+20260928.214227.474.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: datastage-ent-plus-12.0.8+20260927.202412.29.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : datastage-ent-plus-12.0.8+20260927.202412.29.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: datastage-ent-plus-cluster-scoped-12.0.8+20260927.202412.29.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : datastage-ent-plus-cluster-scoped-12.0.8+20260927.202412.29.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: opencontent-opensearch-1.5.3+20250905.120936.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : opencontent-opensearch-1.5.3+20250905.120936.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: opencontent-opensearch-cluster-scoped-1.5.3+20250905.120936.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : opencontent-opensearch-cluster-scoped-1.5.3+20250905.120936.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: ibm-pg-operator-28.3.3+20260625.144015.538.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : ibm-pg-operator-28.3.3+20260625.144015.538.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: ibm-pg-operator-cluster-scoped-28.3.3+20260625.144014.538.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : ibm-pg-operator-cluster-scoped-28.3.3+20260625.144014.538.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : ibm-redis-cp-1.4.1+20260902.142404.332.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : ibm-redis-cp-cluster-scoped-1.4.1+20260902.142404.332.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: ibm-usage-metering-1.0.8+20260916.194642.0.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : ibm-usage-metering-1.0.8+20260916.194642.0.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: ibm-usage-metering-cluster-scoped-1.0.8+20260916.194642.0.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : ibm-usage-metering-cluster-scoped-1.0.8+20260916.194642.0.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : watsonx-ai-ifm-13.0.8+20261009.135858.71.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : watsonx-ai-ifm-cluster-scoped-13.0.8+20261009.135858.71.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : watsonx-ai-13.0.8+20260925.143128.32.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : watsonx-ai-cluster-scoped-13.0.8+20260925.143128.32.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : watsonx-data-7.0.5+20260729.182904.296.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : watsonx-data-cluster-scoped-7.0.5+20260729.182904.296.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : watsonx-data-premium-7.0.5+20260729.182904.296.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : watsonx-data-premium-cluster-scoped-7.0.5+20260729.182904.296.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : wml-13.0.4+20260928.154042.93.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : wml-cluster-scoped-13.0.4+20260928.154042.93.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: ws-pipelines-13.0.8+20260929.143744.25.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : ws-pipelines-13.0.8+20260929.143744.25.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: ws-pipelines-cluster-scoped-13.0.8+20260929.143744.25.tgz
-[2026-11-20T16:54:36] [INFO ] COPIED  : ws-pipelines-cluster-scoped-13.0.8+20260929.143744.25.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : ws-runtimes-13.0.3+20260925.084230.71.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : ws-runtimes-cluster-scoped-13.0.3+20260925.084230.71.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : ws-13.0.8+20260925.125219.26.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [INFO ] COPIED  : ws-cluster-scoped-13.0.8+20260925.125219.26.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:36] [WARN ] COLLISION — file already exists, overwriting: zen-6.10.8+20260929.112719.45.tgz
-[2026-11-20T16:54:37] [INFO ] COPIED  : zen-6.10.8+20260929.112719.45.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-[2026-11-20T16:54:37] [WARN ] COLLISION — file already exists, overwriting: zen-cluster-scoped-6.10.8+20260929.112719.45.tgz
-[2026-11-20T16:54:37] [INFO ] COPIED  : zen-cluster-scoped-6.10.8+20260929.112719.45.tgz  →  /opt/ibm/argocd/gitops-charts/softwarehub/
-
-[2026-11-20T16:54:37] [INFO ] ==========================================================
-[2026-11-20T16:54:37] [INFO ]  Summary (Mode 1 — packaged)
-[2026-11-20T16:54:37] [INFO ]   Expected : 45
-[2026-11-20T16:54:37] [INFO ]   Copied   : 45
-[2026-11-20T16:54:37] [INFO ]   Failed   : 0
-[2026-11-20T16:54:37] [INFO ]   Skipped (migration): 19
-[2026-11-20T16:54:37] [INFO ]  VALIDATION PASSED — all regular charts copied successfully
-[2026-11-20T16:54:37] [INFO ] ==========================================================
-```
-
-#### 5.2 Push Helm charts to the Helm repo
-1. Generate index.yaml
-Make sure the `HELM_REPO_URL` set properly in the environment variable file `cpd_vars.sh`.
-
-```bash
-echo $HELM_REPO_URL
-```
-
-The `HELM_REPO_URL` looks like "https://raw.githubusercontent.com/jhwhenry/gitops-charts/main/softwarehub".
-
-Create the index.yaml for the Helm repo.
-
-> ⚠️ **Important:** For incremental updates, always use `--merge` to preserve existing entries
-```bash
-helm repo index $HELM_CHARTS_DIR \
---url $HELM_REPO_URL  \
---merge $HELM_CHARTS_DIR/index.yaml
-```
-
-2. Commit and push Helm charts to the Helm repo
-
-For example:
-
-```bash
-cd $ARGOCD_DIR/gitops-charts
-git add softwarehub/
-git commit -m "Add IBM Software Hub 5.4.0 Patch 8 watsonx.data and watsonx.ai charts"
-git push origin main
-```
-
-
-### 6. Create install-options.yaml
+### 7. Create install-options.yaml
 1. Go to the `ARGOCD_DIR` folder.
 ```bash
 cd $ARGOCD_DIR
@@ -451,7 +283,7 @@ cp install-options.yaml $WORK_DIR/install-options.yaml
 chmod 644 ${WORK_DIR}/install-options.yaml
 ```
 
-### 7. Run create-argo-appsets command to create Argo CD applicationsets
+### 8. Run create-argo-appsets command to create Argo CD applicationsets
 ```bash
 cpd-cli manage create-argo-appsets \
     --install_option_file=${WORK_DIR}/install-options.yaml \
@@ -464,7 +296,7 @@ The above command will perform the following steps:
 
 - Validate Configuration: Verify all required fields and component dependencies
 
-- Generate Argo CD Resources: Create ApplicationSet manifests and Helm values configuration files
+- Generate Argo CD Resources: Create ApplicationSet manifests, Helm values configuration files and generate Helm charts.
 
 
 **Generated Output:**
@@ -623,12 +455,54 @@ namespaceScoped:
 ~                            
 ```
 
+### 9 Prepare Helm charts and push them to the Helm repo
+#### 9.1 Specify the Helm charts directory
+Specify the target directory which will store the Helm charts. It's recommended using the absolute path of the `gitops-charts/softwarehub` directory created by the git clone command in the 3.11 step.
+```bash
+export HELM_CHARTS_DIR=$ARGOCD_DIR/gitops-charts/softwarehub
+```
 
-### 8. Update the global values config
+#### 9.2 Move the generated Helm charts to Helm charts directory
+Move the Helm charts generated in the step 8 to Helm charts directory.
+```bash
+cp -r $WORK_DIR/ArgoCD/${VERSION}/charts/* $HELM_CHARTS_DIR
+```
 
+#### 9.3 Push Helm charts to the Helm repo
+1. Generate index.yaml
+Make sure the `HELM_REPO_URL` set properly in the environment variable file `cpd_vars.sh`.
 
+```bash
+echo $HELM_REPO_URL
+```
 
-### 8. Commit and push applicationset manifests and helm values configuration files to Git repo
+The `HELM_REPO_URL` looks like "https://raw.github.com/jhwhenry/gitops-charts/main/softwarehub".
+
+Create the index.yaml for the Helm repo.
+
+**Note:**
+- `--url` must be the raw-file base URL for your Git server.
+- Ensure `+` is percent-encoded `(%2B)` in all urls entries after generation
+
+> ⚠️ **Important:** For incremental updates, always use `--merge` to preserve existing entries
+```bash
+helm repo index $HELM_CHARTS_DIR \
+--url $HELM_REPO_URL  \
+--merge $HELM_CHARTS_DIR/index.yaml
+```
+
+2. Commit and push Helm charts to the Helm repo
+
+For example:
+
+```bash
+cd $ARGOCD_DIR/gitops-charts
+git add softwarehub/
+git commit -m "Add watsonx.data and watsonx.ai charts based on IBM Software Hub 5.4.0 Patch 8"
+git push origin main
+```
+
+### 10. Commit and push applicationset manifests and helm values configuration files to Git repo
 
 Navigate to the folder of the cloned Git repository.
 
@@ -638,7 +512,8 @@ cd $ARGOCD_DIR/gitops-tech-preview
 
 Copy or move the generated files to your repository.
 ```bash
-cp -r $WORK_DIR/appsets/${VERSION} .
+mkdir -p ${VERSION}
+cp -r $WORK_DIR/ArgoCD/${VERSION}/appsets ${VERSION}/
 ```
 
 Add the files to Git. For example:
@@ -656,10 +531,10 @@ Push to remote repository
 git push origin ${ARGOCD_APPSET_CONFIG_GIT_REPO_BRANCH}
 ```
 
-### 9. Apply ApplicationSets
+### 11. Apply ApplicationSets
 - 1) Apply the **cluster-scoped** ApplicationSet manifests to your OpenShift cluster, then confirm its Applications have been generated
 ```bash
-oc apply -f $WORK_DIR/appsets/${VERSION}/applicationsets/cluster-scoped-appset.yaml
+oc apply -f $WORK_DIR/ArgoCD/${VERSION}/appsets/applicationsets/cluster-scoped-appset.yaml
 
 oc get applications -n ${PROJECT_ARGOCD} -l resource-scope=cluster-scoped
 ```
@@ -671,7 +546,7 @@ oc get applications -n ${PROJECT_ARGOCD} -l resource-scope=cluster-scoped
 - 4) Once the cluster-scoped Applications are healthy, apply the **namespace-scoped** ApplicationSet, then confirm its Applications have been generated:
 
 ```bash
-oc apply -f $WORK_DIR/appsets/${VERSION}/applicationsets/namespace-scoped-appset.yaml
+oc apply -f $WORK_DIR/ArgoCD/${VERSION}/appsets/applicationsets/namespace-scoped-appset.yaml
 
 oc get applications -n ${PROJECT_ARGOCD} -l resource-scope=namespace-scoped
 ```
