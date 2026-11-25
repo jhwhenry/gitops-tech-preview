@@ -1,2 +1,406 @@
-# gitops-tech-preview
-A technical preview of IBM Software Hub Argo CD applicationset based deployment
+# gitops-tech-preview — IBM Software Hub Argo CD ApplicationSet Framework
+
+A technical preview of an **Argo CD ApplicationSet-based** deployment of
+**IBM Software Hub (SWH)** services on OpenShift.  
+The ApplicationSets and Helm values files are **generated** from the IBM Software Hub
+CASE packages with the `olm-utils-premium-v4` image, committed to this repository, and
+reconciled to the cluster by Argo CD. This repository holds the generated state, the
+AppProject, the helper tools and the installation guides.
+
+> **Note:** Argo CD based deployment requires an IBM Software Hub **Premium** entitlement.
+
+---
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Repository Structure](#repository-structure)
+3. [Deployment Architecture](#deployment-architecture)
+4. [Deployment Workflow](#deployment-workflow)
+5. [Assumptions](#assumptions)
+6. [Components and Dependency Levels](#components-and-dependency-levels)
+7. [Pre-requisites](#pre-requisites)
+8. [Getting Started](#getting-started)
+9. [Key Configuration Reference](#key-configuration-reference)
+10. [Tools](#tools)
+11. [Documentation](#documentation)
+12. [Branching Strategy](#branching-strategy)
+
+---
+
+## Overview
+
+This repository is the Git side of a GitOps pattern for IBM Software Hub. It uses
+DataStage Enterprise Plus and Orchestration Pipelines (WS Pipelines) as the worked
+example, and can be extended to other services.
+
+- **Generated, not hand-written.** The `cpd-cli manage create-argo-appsets` command
+  (which runs in the `olm-utils-premium-v4` container) reads your `install-options.yaml`,
+  validates the components and their dependencies, and produces the ApplicationSets and
+  the values files under `<release>/appsets/` (for example `5.4.0/appsets/`). The
+  `ibm-licensing` config file, which the command does not generate, is added afterwards
+  by [`tools/generate_licensing_config.sh`](tools/generate_licensing_config.sh).
+- **Two ApplicationSets per release**, both using a Git **matrix generator** that
+  combines `global-values-config.yaml` with every `apps-config/*-config.yaml` file:
+  - `cpd-instance-cluster-scoped` — CRDs, ClusterRoles and other cluster-scoped resources.
+  - `cpd-instance-namespace-scoped` — operators, CRs and service workloads.
+  
+  Each config file produces one Argo CD `Application` per scope.
+- **Two repositories are used. Do not confuse them:**
+
+  | Repository | Example | What it holds | Variable |
+  |---|---|---|---|
+  | Helm chart repository | `gitops-charts` | The chart `.tgz` files and `index.yaml`, extracted from the CASE packages | `HELM_REPO_URL` |
+  | Git repository for ApplicationSets | `gitops-tech-preview` (this repo) | The tools, the AppProject manifest, the generated ApplicationSets and the values files | `ARGOCD_APPSET_CONFIG_GIT_REPO_URL` |
+
+- **Manual sync by default.** Auto sync is disabled on the generated Applications, so
+  you control the order in which components are deployed, following the dependency levels.
+  Auto sync can be enabled afterwards, once everything is synced and healthy
+  ([Install.md, 3.19](docs/Install.md#319-apply-applicationsets)).
+- An **Argo CD AppProject** (`ibm-software-hub`) defined in
+  `appproject/argocd-project.yaml` provides governance by enforcing:
+  - **Source trust** — only the registered Git and Helm repositories can be used.
+  - **Destination control** — deployments are limited to the in-cluster API server and
+    the declared namespaces (`cpd-operators`, `cpd-instance`, `ibm-licensing` and
+    `openshift-gitops` for the ApplicationSet resources). The `default` namespace and the
+    empty namespace (`''`) are also listed, because the generated Applications use them as
+    their destination (`default` for namespace-scoped charts, no namespace for
+    cluster-scoped charts). Keep both entries; Argo CD rejects the Applications without them.
+  - **Resource access gates** — kinds that application delivery must not manage
+    (for example `Node`, `MachineConfig`, `ClusterVersion`, `StorageClass`,
+    `SecurityContextConstraints`) are blocked by a blacklist. The project checks the kind
+    of a cluster-scoped resource, not its content, so a chart could still create a
+    `ClusterRole`, `ClusterRoleBinding` or webhook that grants wide access. Trust rests on
+    the sources: protect the Git and Helm repos and review chart changes before syncing
+    (see the security note in `appproject/argocd-project.yaml`).
+  - **RBAC roles** — project-scoped `swh-readonly` and `swh-admin` roles can be bound
+    to OpenShift groups, so day-to-day operation does not need cluster-admin privilege.
+
+---
+
+## Repository Structure
+
+```
+gitops-tech-preview/
+├── appproject/
+│   ├── argocd-project.yaml                  # AppProject ibm-software-hub (source, destinations, gates, roles)
+│   └── argocd-rbac-cm.yaml                  # Global Argo CD RBAC (default policy, group isolation)
+├── <release>/                               # e.g. 5.4.0 — generated by cpd-cli manage create-argo-appsets
+│   ├── appsets/
+│   │   ├── README.md                        # Dependency levels and next steps for this release
+│   │   ├── applicationsets/
+│   │   │   ├── cluster-scoped-appset.yaml   # ApplicationSet cpd-instance-cluster-scoped
+│   │   │   └── namespace-scoped-appset.yaml # ApplicationSet cpd-instance-namespace-scoped
+│   │   └── values-config/
+│   │       ├── global-values-config.yaml    # Values passed to every chart (global.*)
+│   │       └── apps-config/
+│   │           └── <component>-config.yaml  # One per component: chart name, version, values
+│   │                                        # (ibm-licensing-config.yaml is added by tools/generate_licensing_config.sh)
+│   └── charts/                              # Generated Helm charts (.tgz) published to the Helm repo
+├── tools/                                   # Helper scripts
+│   ├── extract_helm_charts.sh
+│   ├── download_licensing_charts.sh
+│   ├── generate_licensing_config.sh
+│   └── add_helm_repo_setting.sh
+└── docs/                                    # Installation, upgrade and Argo CD setup guides
+```
+
+### Anatomy of a component config file
+
+Each `apps-config/<component>-config.yaml` file describes one component. For example
+`zen-config.yaml`:
+
+```yaml
+componentID: zen
+
+clusterScoped:                 # rendered by cluster-scoped-appset.yaml
+  appName: zen-cluster
+  chart: zen-cluster-scoped
+  version: <CHART_VERSION>
+
+namespaceScoped:               # rendered by namespace-scoped-appset.yaml
+  appName: zen
+  chart: zen
+  version: <CHART_VERSION>
+```
+
+A section can also carry an optional `repoURL`. When it is not set, the ApplicationSet uses
+the Helm chart repository that was written into it when it was generated (`chartRepo` in
+`install-options.yaml`). `ibm-licensing-config.yaml` sets `repoURL` explicitly.
+
+Changing `version` in a config file and pushing it is how a component is moved to a
+new chart version. A component with no cluster-scoped chart (for example
+`platform-config`) has no `clusterScoped` section and is excluded in the cluster-scoped
+ApplicationSet (`exclude: true` in its Git generator).
+
+---
+
+## Deployment Architecture
+
+```
+┌──────────────────────────────┐        ┌──────────────────────────────────────┐
+│  Helm chart repository       │        │  Git repository (this repo)          │
+│  (gitops-charts)             │        │  branch: <release>_Patch<N>          │
+│  chart .tgz + index.yaml     │        │  ├── <release>/appsets/              │
+└──────────────┬───────────────┘        │  ├── appproject/                     │
+               │ chart source           │  └── tools/                          │
+               │                        └──────────────────┬───────────────────┘
+               │                                           │ git generator (files)
+               ▼                                           ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  OpenShift cluster — namespace: openshift-gitops                             │
+│                                                                              │
+│  ┌────────────────────────────────────────────────────────────────────┐     │
+│  │  AppProject  (ibm-software-hub)                                     │     │
+│  │  Source trust, destinations, resource gates, RBAC roles             │     │
+│  └──────────────────────────────┬─────────────────────────────────────┘     │
+│                                 │ governs                                    │
+│                                 ▼                                            │
+│  ┌──────────────────────────────────┐  ┌───────────────────────────────┐    │
+│  │ ApplicationSet                   │  │ ApplicationSet                │    │
+│  │ cpd-instance-cluster-scoped      │  │ cpd-instance-namespace-scoped │    │
+│  │ matrix: global values × configs  │  │ matrix: global values × configs│   │
+│  └────────────────┬─────────────────┘  └───────────────┬───────────────┘    │
+│                   │ one Application per component      │                    │
+│                   ▼                                    ▼                    │
+│  ┌────────────────────────────┐        ┌────────────────────────────────┐   │
+│  │ zen-cluster, ccs-cluster,… │        │ zen, ccs, datastage-ent-plus,… │   │
+│  └─────────────┬──────────────┘        └───────────────┬────────────────┘   │
+│                └──────────── Helm render + apply ──────┘                    │
+│                                 ▼                                            │
+│   Target namespaces: cpd-operators · cpd-instance · ibm-licensing           │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Deployment Workflow
+
+```
+Prepare workstation and variables file, log in to the cluster
+        │
+        ▼
+Configure Argo CD: custom health checks, repository registration,
+namespaces, Argo CD access, image pull secret
+        │
+        ▼
+Download CASE packages, clone the Helm repo and this Git repo
+        │
+        ▼
+Apply the AppProject
+        │
+        ▼
+cpd-cli manage create-argo-appsets ──► ApplicationSets + values files + Helm charts
+        │
+        ▼
+Push the Helm charts to the Helm repo (+ ibm-licensing charts, index.yaml)
+        │
+        ▼
+Generate the ibm-licensing config, commit and push the generated files to the patch branch
+        │
+        ▼
+oc apply cluster-scoped ApplicationSet ──► sync Applications manually,
+        │   by dependency level, wait until Synced / Healthy
+        ▼
+oc apply namespace-scoped ApplicationSet ──► sync Applications manually,
+        │   by dependency level, wait until Synced / Healthy
+        ▼
+Cluster state matches Git (optional: enable auto sync)
+```
+
+The full procedure, with commands, is in [docs/Install.md](docs/Install.md).
+
+---
+
+## Assumptions
+
+1. **DataStage and Orchestration Pipelines (WS Pipelines) are the target services.**
+   The guides use `5.4.0` Patch 8 with these services as the example. Other services can
+   be added by extending the component list in `install-options.yaml` and regenerating.
+2. The IBM Software Hub Premium entitlement is available, because the
+   `olm-utils-premium-v4` image is required.
+3. The default Argo CD instance `openshift-gitops` in the `openshift-gitops` namespace
+   is used.
+4. The Argo CD application controller is granted `cluster-admin`, because the
+   cluster-scoped ApplicationSet creates CRDs, ClusterRoles and ClusterRoleBindings.
+   A separation-of-duties model is possible but is not covered here.
+5. The `ibm-software-hub` AppProject is used and is applied **before** the
+   ApplicationSets.
+
+---
+
+## Components and Dependency Levels
+
+> **Note:** This is only an example. The components, dependency levels and dependencies below
+> are those of the IBM Software Hub `5.4.0` Patch 8 deployment of **Orchestration Pipelines
+> (`ws_pipelines`)** and **DataStage Enterprise Plus (`datastage_ent_plus`)**, taken from
+> `5.4.0/appsets/README.md`. Other services, releases or patches have a different set of components
+> and dependencies. Use the `README.md` generated for your own release in
+> `<release>/appsets/README.md`.
+
+Components at lower levels are foundational: sync them and wait until they are healthy before
+you move to the next level.
+
+| Level | Components |
+|---|---|
+| 1 | `zen`, `cpd_platform`, `ibm_pg_operator`, `postgresql`, `cpfs`, `ibm_usage_metering` |
+| 2 | `platform-config` |
+| 3 | `opencontent_opensearch` |
+| 4 | `ccs` |
+| 5 | `ws_pipelines`, `datastage_ent_plus` |
+
+| Component | Depends on |
+|---|---|
+| `ccs` | `opencontent_opensearch`, `postgresql` |
+| `ws_pipelines` | `opencontent_opensearch`, `postgresql`, `ccs` |
+| `datastage_ent_plus` | `opencontent_opensearch`, `postgresql`, `ccs` |
+
+`ibm-licensing` is added by a separate helper ([tools/generate_licensing_config.sh](tools/generate_licensing_config.sh)),
+because its charts are downloaded from the public IBM charts repository.
+
+---
+
+## Pre-requisites
+
+Details and links are in [docs/Install.md — Prerequisites](docs/Install.md#2-prerequisites).
+
+| Area | Requirement |
+|---|---|
+| Cluster | A supported OpenShift Container Platform release, with the required node settings, a certificate manager, and the prerequisite software installed |
+| Storage | A storage class for block (RWO) and one for file (RWX) volumes |
+| GitOps | OpenShift GitOps installed; the Argo CD application controller [scaled](docs/Scale-ArgoCD.md) so it is not OOMKilled when many Applications sync |
+| Images | A private image registry, reachable from the cluster and pre-populated with the required images |
+| Helm repo | A Helm chart repository reachable from Argo CD |
+| Git repo | A Git repository and a branch you can push to |
+| Access | An OpenShift `cluster-admin` user (also in the `cluster-admins` group for Argo CD UI/CLI); an IBM entitlement key; registry credentials; tokens for the Git and Helm repos |
+| Workstation | `podman`, `git`, `jq`, `wget`, `oc`, `helm`, `cpd-cli`, the Argo CD CLI, and the `olm-utils-premium-v4` image |
+
+---
+
+## Getting Started
+
+Follow the guide that matches your scenario. Each one walks through the whole procedure step by
+step, with the commands.
+
+| Scenario | Guide |
+|---|---|
+| Install IBM Software Hub services on a cluster with Argo CD | [docs/Install.md](docs/Install.md) |
+| Upgrade IBM Software Hub services that were deployed with this framework to a new patch | [docs/Upgrade.md](docs/Upgrade.md) |
+
+Both guides use DataStage and Orchestration Pipelines as the example: `Install.md` installs
+`5.4.0` Patch 8, and `Upgrade.md` upgrades from `5.4.0` Patch 8 to `5.4.0` Patch 9. Check the
+[Pre-requisites](#pre-requisites) first.
+
+---
+
+## Key Configuration Reference
+
+Values shared by every component live in `<release>/appsets/values-config/global-values-config.yaml`
+and are passed to the charts as `global.*`. Component-specific values live in the
+component's `apps-config/*-config.yaml` file.
+
+| Key | Example | Description |
+|---|---|---|
+| `global.operatorNamespace` | `cpd-operators` | Namespace where operators are installed |
+| `global.instanceNamespace` | `cpd-instance` | Namespace where service instances run |
+| `global.blockStorageClass` | `ocs-storagecluster-ceph-rbd` | RWO block storage class |
+| `global.fileStorageClass` | `ocs-storagecluster-cephfs` | RWX file storage class |
+| `global.imagePullPrefix` | `<registry>` | Registry that the service images are pulled from |
+| `global.imagePullSecret` | `ibm-entitlement-key` | Name of the image pull secret |
+| `global.installConfigImagePullPrefix` | `<registry>` | Registry that the olm-utils image is pulled from |
+| `global.installConfigImageName` | `cp/cpd/olm-utils-premium-v4` | olm-utils image used by the platform-config job |
+| `global.licenseAccept` | `true` | Accept the IBM license |
+| `global.components` | `[zen, ccs, ws_pipelines, …]` | Components to activate |
+| `<scope>.repoURL` | `<HELM_REPO_URL>` | Optional. Helm repo of each chart (per component, per scope); falls back to the repo in the ApplicationSet |
+| `<scope>.version` | `<CHART_VERSION>` | Chart version of each component (`<scope>` is `clusterScoped` or `namespaceScoped`) |
+
+### ApplicationSet settings
+
+| Setting | Cluster-scoped | Namespace-scoped |
+|---|---|---|
+| Name | `cpd-instance-cluster-scoped` | `cpd-instance-namespace-scoped` |
+| Application label | `resource-scope: cluster-scoped` | `resource-scope: namespace-scoped` |
+| Project | `ibm-software-hub` | `ibm-software-hub` |
+| Automated sync | Disabled (manual) | Disabled (manual) |
+| Sync options | `Replace`, `ServerSideApply`, `PruneLast`, `PrunePropagationPolicy=foreground`, `RespectIgnoreDifferences` | Argo CD defaults |
+| Retry | limit 5, backoff 5s × 2, max 3m | limit 5, backoff 5s × 2, max 3m |
+| Helm values | `global.operatorNamespace` only | All of `global.*` plus the component's `values` |
+
+---
+
+## Tools
+
+| Script | Purpose |
+|---|---|
+| [`tools/extract_helm_charts.sh`](tools/extract_helm_charts.sh) | Extracts the Helm charts from the CASE source tree, packaged (`.tgz`) or unpacked. Used in [Service-Expansion-Installation.md](docs/Service-Expansion-Installation.md) |
+| [`tools/download_licensing_charts.sh`](tools/download_licensing_charts.sh) | Downloads the `ibm-licensing` and `ibm-licensing-cluster-scoped` charts from the public IBM charts repository |
+| [`tools/generate_licensing_config.sh`](tools/generate_licensing_config.sh) | Writes `ibm-licensing-config.yaml` for the ApplicationSets |
+| [`tools/add_helm_repo_setting.sh`](tools/add_helm_repo_setting.sh) | Optional. Adds `repoURL` to every section of the `apps-config` files that lacks one. Safe to run again |
+
+---
+
+## Documentation
+
+| Document | Description |
+|---|---|
+| [docs/Install.md](docs/Install.md) | Step-by-step installation of IBM Software Hub services with Argo CD ApplicationSets |
+| [docs/Upgrade.md](docs/Upgrade.md) | Upgrade of the services deployed with this framework |
+| [docs/Service-Expansion-Installation.md](docs/Service-Expansion-Installation.md) | Install watsonx.data and watsonx.ai after a successful IBM Software Hub installation |
+| [docs/Mirror olm-utils-premium-v4 image.md](docs/Mirror%20olm-utils-premium-v4%20image.md) | Mirror the `olm-utils-premium-v4` image to your private registry |
+| [docs/Scale-ArgoCD.md](docs/Scale-ArgoCD.md) | Increase Argo CD controller resources before a large deployment |
+| [docs/ArgoCD-AppProject-Best-Practices.md](docs/ArgoCD-AppProject-Best-Practices.md) | Design of the `ibm-software-hub` AppProject |
+| [docs/ArgoCD-AppProject-RBAC-Test-Guide.md](docs/ArgoCD-AppProject-RBAC-Test-Guide.md) | Test the AppProject RBAC |
+| [docs/ArgoCD-RBAC-OCP-Groups.md](docs/ArgoCD-RBAC-OCP-Groups.md) | Bind Argo CD RBAC roles to OpenShift groups |
+| [docs/Create-Cluster-Admin-ArogCD-Deployment.md](docs/Create-Cluster-Admin-ArogCD-Deployment.md) | Create a cluster-admin user for the deployment (HTPasswd example) |
+
+---
+
+## Branching Strategy
+
+The framework keeps the reusable assets and the deployment configuration of each IBM Software Hub
+patch in separate branches. You can use this repository directly, or use your own copy of it. The
+branch that you use must contain the `tools/` and `appproject/` directories, because the guides use them
+([Install.md, 3.12](docs/Install.md#312-clone-the-gitops-tech-preview-git-repo-to-your-local-workstation)).
+
+| Branch | Purpose |
+|---|---|
+| `main` | Currently contains only this README. Nothing is deployed from it |
+| `<release>_Patch<N>` (for example `5.4.0_Patch8`) | Patch branch: one per IBM Software Hub release and patch. It holds the framework (`appproject/`, `tools/`) and the ApplicationSets and values files generated for that patch (`5.4.0/`). The ApplicationSets point their Git generators at this branch (`revision: 5.4.0_Patch8`), so Argo CD reads the deployed configuration from it |
+
+The branch name is derived from two variables in the environment variables file:
+
+```bash
+export ARGOCD_APPSET_CONFIG_GIT_REPO_BRANCH=${VERSION}_Patch${PATCH_ID}   # e.g. 5.4.0_Patch8
+```
+
+### Working with the patch branches
+
+1. **Create the patch branch.** Clone the repo, start from a branch that contains `appproject/` and
+   `tools/`, and create the branch for the patch that you are installing or upgrading to:
+   `git checkout -b $ARGOCD_APPSET_CONFIG_GIT_REPO_BRANCH`
+   ([Upgrade.md, 3.7](docs/Upgrade.md#37-clone-the-gitops-tech-preview-git-repo-to-your-local-workstation)).
+   If the branch already exists (for example `5.4.0_Patch8` in this repo), check it out instead
+   ([Install.md, 3.12](docs/Install.md#312-clone-the-gitops-tech-preview-git-repo-to-your-local-workstation)).
+2. **Generate, commit and push.** Generate the ApplicationSets and values files, post-process them,
+   copy `<release>/appsets/` into the clone, commit, and push the patch branch
+   ([Install.md, 3.18](docs/Install.md#318-commit-and-push-applicationset-manifests-and-helm-values-configuration-files-to-git-repo)).
+3. **Apply and sync.** Apply the ApplicationSets from the generated files and sync the Applications.
+
+### Rules
+
+- **Do not delete or rewrite a patch branch while it is deployed.** The ApplicationSets
+  reference it by name, so deleting it, or force-pushing to it, changes or breaks what Argo CD
+  reconciles. A push to the branch changes what the Applications compare against, so they show
+  `OutOfSync` (or sync on their own if you enabled auto sync).
+- **Keep one branch per patch.** A new patch (for example `5.4.0_Patch9`) gets its own branch, so
+  the configuration of the previous patch stays available as a record and for reference.
+  - **Important: a kept branch is not a rollback path.** IBM Software Hub services do **not**
+    support downgrading to a lower version. Do not point the ApplicationSets back to an older
+    patch branch, and do not apply an older patch's ApplicationSets, on a cluster that already
+    runs a newer patch. If an upgrade has a problem, fix it forward on the newer patch, or
+    restore the cluster from a backup taken before the upgrade.
+- **Do not commit credentials.** Repository URLs must not contain tokens
+  ([Install.md, 3.6](docs/Install.md#36-argo-cd-repository-registration)).
+
+To upgrade services that were deployed with this framework to a new patch, follow
+[docs/Upgrade.md](docs/Upgrade.md).

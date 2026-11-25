@@ -1,0 +1,111 @@
+# -------------------------------------------------------------------
+# ArgoCD Global RBAC ConfigMap — IBM Software Hub deployment
+#
+# This ConfigMap controls the global ArgoCD RBAC policy for the
+# OpenShift GitOps instance. It works in conjunction with the
+# AppProject roles defined in argocd-project.yaml.
+#
+# Two-layer RBAC model:
+#   Layer 1 — this file (argocd-rbac-cm):
+#     Controls global defaults, platform-admin access, and maps
+#     OpenShift groups to AppProject roles.
+#   Layer 2 — argocd-project.yaml (AppProject roles):
+#     Defines what swh-readonly and swh-admin can do within the
+#     ibm-software-hub project scope.
+#
+# Actor model (IBM Software Hub GitOps deployment):
+#
+#   IBM Software Hub Applications can be synchronized manually or
+#   automatically; both modes are supported. The human actors are:
+#
+#   Platform Admin  → ibm-swh-platform group
+#     Full global ArgoCD control: manage AppProjects, clusters,
+#     repository registrations, certificates. role:admin is a superset
+#     of swh-admin, so no separate swh-admin mapping is needed.
+#
+#   SWH Admin       → ibm-swh-admins group
+#     Project-scoped full control: application lifecycle management,
+#     manual sync / force-sync, ApplicationSet management, log access.
+#     Cannot modify global ArgoCD infrastructure.
+#
+#   Auditor/Viewer  → ibm-swh-viewers group
+#     Read-only visibility: application health, sync status,
+#     resource tree, manifests, pod logs. For security/compliance
+#     teams and management.
+#
+# Deployment:
+#   Apply manually once — this ConfigMap is read by the ArgoCD
+#   server and takes effect without a pod restart.
+#
+#   oc apply -f appproject/argocd-rbac-cm.yaml
+#
+#   NOTE: OpenShift GitOps may manage this ConfigMap from spec.rbac of the
+#   ArgoCD CR and revert manual changes. If that happens, set policy.csv,
+#   policy.default and scopes in spec.rbac of the CR instead.
+#
+# See docs/ArgoCD-RBAC-OCP-Groups.md for the full setup guide.
+# -------------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/name: argocd-rbac-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  # -----------------------------------------------------------------
+  # policy.default — access level for all authenticated users with
+  # no explicit role assignment.
+  #
+  # Set to "" (empty) so that authenticated users who are not members
+  # of any mapped OpenShift group have NO access to any ArgoCD
+  # resource. This prevents IBM Software Hub deployment state from
+  # being visible to all OpenShift cluster users by default.
+  #
+  # WARNING: Do NOT set this to role:readonly in an enterprise
+  # deployment — that would expose all application state, manifests,
+  # and sync history to every authenticated user on the cluster.
+  # -----------------------------------------------------------------
+  policy.default: ""
+
+  # -----------------------------------------------------------------
+  # policy.csv — global role assignments and group mappings.
+  #
+  # Format:
+  #   p, <subject>, <resource>, <action>, <object>, <effect>
+  #   g, <group/user>, <role>
+  #
+  # Replace the group names with your actual OpenShift group names.
+  # Create OpenShift groups before applying:
+  #   oc adm groups new ibm-swh-platform
+  #   oc adm groups new ibm-swh-admins
+  #   oc adm groups new ibm-swh-viewers
+  # -----------------------------------------------------------------
+  policy.csv: |
+    # ── Platform Admin ──────────────────────────────────────────────
+    # Full global ArgoCD access: manage AppProjects, clusters,
+    # repository registrations, certificates, and RBAC configuration.
+    # Assign only to the IBM SWH platform infrastructure team.
+    g, ibm-swh-platform, role:admin
+
+    # ── SWH Admin ───────────────────────────────────────────────────
+    # Project-scoped full control within ibm-software-hub.
+    # Maps to the swh-admin role defined in argocd-project.yaml.
+    g, ibm-swh-admins, role:proj:ibm-software-hub:swh-admin
+
+    # ── Auditor / Viewer ────────────────────────────────────────────
+    # Read-only visibility into IBM Software Hub deployment state.
+    # Maps to the swh-readonly role defined in argocd-project.yaml.
+    g, ibm-swh-viewers, role:proj:ibm-software-hub:swh-readonly
+
+  # -----------------------------------------------------------------
+  # scopes — OIDC/OAuth scopes to evaluate for group membership.
+  #
+  # '[groups]' instructs ArgoCD to read group membership from the
+  # OpenShift OAuth token's groups claim. This requires users to be
+  # members of named OpenShift Group objects (oc adm groups).
+  # A ClusterRoleBinding alone is NOT sufficient — see the root
+  # cause description in docs/ArgoCD-RBAC-OCP-Groups.md.
+  # -----------------------------------------------------------------
+  scopes: '[groups]'
