@@ -1,0 +1,16 @@
+# Service specific Configuration
+# Combined cluster-scoped and namespace-scoped configuration
+
+componentID: watson-gateway
+
+# Cluster-scoped chart configuration
+clusterScoped:
+  appName: watson-gateway-cluster
+  chart: watson-gateway-cluster-scoped
+  version: 2.4.4+20250905.144313
+
+# Namespace-scoped chart configuration
+namespaceScoped:
+  appName: watson-gateway
+  chart: watson-gateway
+  version: 2.4.4+20250905.144313

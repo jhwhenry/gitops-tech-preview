@@ -5,26 +5,24 @@ global:
   crAdoption: false
   releaseVersion: 5.4.0
   components:
-    - datastage_ent_plus
-    - cpd_platform
-    - ws_pipelines
-    - opencontent_opensearch
-    - ibm_usage_metering
-    - datarefinery
-    - platform-config
-    - watsonx_ai_ifm
-    - ws_runtimes
-    - wml
-    - watsonx_ai
-    - ws
-    - watsonx_data
-    - ibm_pg_operator
-    - cpfs
-    - postgresql
-    - analyticsengine
-    - ibm_redis_cp
     - zen
+    - cpd_platform
+    - opencontent_rabbitmq
+    - analyticsengine
+    - cpfs
     - ccs
+    - opencontent_opensearch
+    - data_governor
+    - ibm_pg_operator
+    - watsonx_orchestrate
+    - platform-config
+    - watson_assistant
+    - ibm_redis_cp
+    - watsonx_ai_ifm
+    - watson_gateway
+    - postgresql
+    - ibm_usage_metering
+    - watsonx_data
 
   # namespaces
   operatorNamespace: cpd-operators

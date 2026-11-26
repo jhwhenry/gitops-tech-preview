@@ -1,0 +1,19 @@
+# Service specific Configuration
+# Combined cluster-scoped and namespace-scoped configuration
+
+componentID: watson-assistant
+
+# Cluster-scoped chart configuration
+clusterScoped:
+  appName: watson-assistant-cluster
+  chart: watson-assistant-cluster-scoped
+  version: 5.17.1+20261017.215936.4887
+
+# Namespace-scoped chart configuration
+namespaceScoped:
+  appName: watson-assistant
+  chart: watson-assistant
+  version: 5.17.1+20261017.215936.4887
+  values: |
+    watsonAssistant:
+      deployCR: false

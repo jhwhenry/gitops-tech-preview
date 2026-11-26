@@ -1,0 +1,16 @@
+# Service specific Configuration
+# Combined cluster-scoped and namespace-scoped configuration
+
+componentID: opencontent-rabbitmq
+
+# Cluster-scoped chart configuration
+clusterScoped:
+  appName: opencontent-rabbitmq-cluster
+  chart: opencontent-rabbitmq-cluster-scoped
+  version: 1.4.3+20250909.172851
+
+# Namespace-scoped chart configuration
+namespaceScoped:
+  appName: opencontent-rabbitmq
+  chart: opencontent-rabbitmq
+  version: 1.4.3+20250909.172851

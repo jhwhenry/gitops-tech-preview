@@ -1,0 +1,22 @@
+# Service specific Configuration
+# Combined cluster-scoped and namespace-scoped configuration
+
+componentID: watsonx-orchestrate
+
+# Cluster-scoped chart configuration
+clusterScoped:
+  appName: watsonx-orchestrate-cluster
+  chart: watsonx-orchestrate-cluster-scoped
+  version: 8.0.4+20261019.111629.22713
+
+# Namespace-scoped chart configuration
+namespaceScoped:
+  appName: watsonx-orchestrate
+  chart: watsonx-orchestrate
+  version: 8.0.4+20261019.111629.22713
+  values: |
+    watsonxOrchestrate:
+      installMode: agentic
+      size: small
+      watsonxAI:
+        watsonxaiifm: false

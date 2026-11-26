@@ -1,0 +1,16 @@
+# Service specific Configuration
+# Combined cluster-scoped and namespace-scoped configuration
+
+componentID: data-governor
+
+# Cluster-scoped chart configuration
+clusterScoped:
+  appName: data-governor-cluster
+  chart: data-governor-cluster-scoped
+  version: 9.0.2+20261016.144249.496
+
+# Namespace-scoped chart configuration
+namespaceScoped:
+  appName: data-governor
+  chart: data-governor
+  version: 9.0.2+20261016.144249.496

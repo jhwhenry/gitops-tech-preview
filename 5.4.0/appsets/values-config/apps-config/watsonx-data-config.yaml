@@ -16,5 +16,4 @@ namespaceScoped:
   version: 7.0.5+20260729.182904.296
   values: |
     watsonxData:
-      enable_lite_milvus: false
-      scaleConfig: small
+      deployCR: false
